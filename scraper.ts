@@ -274,7 +274,7 @@ async function parseCells(page) {
 
     for (let horizontalLine of horizontalLines) {
         for (let verticalLine of verticalLines) {
-            let intersectionPoint = intersectLines(horizontalLine, verticalLine, true);  // do not extend lines to infinity (there are no gaps in the lines so this is not needed)
+            let intersectionPoint = intersectLines(horizontalLine, verticalLine, false);  // for Kimba PDF files the lines need to extend to infinity
 
             let haveSharedPoints =
                 (verticalLine.x1 - horizontalLine.x1) ** 2 + (verticalLine.y1 - horizontalLine.y1) ** 2 < Tolerance ** 2 ||
@@ -468,25 +468,20 @@ async function parsePdf(url: string) {
 
         // Find the heading cells.
 
-        let conditionsHeadingCell = cells.find(cell => /^conditions/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-        let referralConcurrenceHeadingCell = cells.find(cell => /^referral\/concurrence/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-        if (conditionsHeadingCell !== undefined && referralConcurrenceHeadingCell !== undefined)
-            continue;  // ignore the pages that just have conditions information
+        let numberHeadingCell = cells.find(cell => /^number/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
+        let dateReceivedHeadingCell = cells.find(cell => /^date/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
+        let locationHeadingCell = cells.find(cell => /^location/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
+        let buildingDetailsHeadingCell = cells.find(cell => /^buildingdetails/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
 
-        let applicationNumberHeadingCell = cells.find(cell => /^applicationno\./i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-        let receivedDateHeadingCell = cells.find(cell => /^datereceived/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-        let addressHeadingCell = cells.find(cell => /^addressofdevelopment/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-        let descriptionHeadingCell = cells.find(cell => /^proposeddevelopment/i.test(cell.elements.map(element => element.text).join("").replace(/\s/g, "")));
-
-        if (applicationNumberHeadingCell === undefined) {
+        if (numberHeadingCell === undefined) {
             let elementSummary = elements.map(element => `[${element.text}]`).join("");
-            console.log(`No development applications can be parsed from the current page because the "Application No." column heading was not found.  Elements: ${elementSummary}`);
+            console.log(`No development applications can be parsed from the current page because the "NUMBER" column heading was not found.  Elements: ${elementSummary}`);
             continue;
         }
 
-        if (addressHeadingCell === undefined) {
+        if (locationHeadingCell === undefined) {
             let elementSummary = elements.map(element => `[${element.text}]`).join("");
-            console.log(`No development applications can be parsed from the current page because the "Address of Development" column heading was not found.  Elements: ${elementSummary}`);
+            console.log(`No development applications can be parsed from the current page because the "LOCATION" column heading was not found.  Elements: ${elementSummary}`);
             continue;
         }
 
@@ -494,17 +489,20 @@ async function parsePdf(url: string) {
         // row, will not actually contain a development application).
 
         for (let row of rows) {
-            let applicationNumberCell = row.find(cell => getHorizontalOverlapPercentage(cell, applicationNumberHeadingCell) > 90);
-            let receivedDateCell = row.find(cell => getHorizontalOverlapPercentage(cell, receivedDateHeadingCell) > 90);
-            let addressCell = row.find(cell => getHorizontalOverlapPercentage(cell, addressHeadingCell) > 90);
-            let descriptionCell = row.find(cell => getHorizontalOverlapPercentage(cell, descriptionHeadingCell) > 90);
+            let applicationNumberCell = row.find(cell => getHorizontalOverlapPercentage(cell, numberHeadingCell) > 75);  // use 75% as a precaution (just because the NUMBER column heading also spans vertical month text such as "JAN - MARCH")
+            let receivedDateCell = row.find(cell => getHorizontalOverlapPercentage(cell, dateReceivedHeadingCell) > 90);
+            let addressCell = row.find(cell => getHorizontalOverlapPercentage(cell, locationHeadingCell) > 90);
+            let descriptionCell = row.find(cell => getHorizontalOverlapPercentage(cell, buildingDetailsHeadingCell) > 90);
 
             // Construct the application number.
 
             if (applicationNumberCell === undefined)
                 continue;
             let applicationNumber = applicationNumberCell.elements.map(element => element.text).join("").trim().toUpperCase();
-            if (!/[0-9]+\/[0-9A-Z]+\/[0-9]+/.test(applicationNumber)) { // an application number must be present, for example, "690/006/15"
+            applicationNumber = applicationNumber.replace(/^[A-Z- ]*/i, "");  // remove any month range prefix text such as "APRIL - JUNE"
+            if (applicationNumber.length >= 18 && applicationNumber.length % 2 == 0 && applicationNumber.substring(0, applicationNumber.length / 2) === applicationNumber.substring(applicationNumber.length / 2))  // avoid any duplicated application numbers
+                applicationNumber = applicationNumber.substring(applicationNumber.length / 2);
+            if (!/[0-9]+\/[0-9A-Z]+\/[0-9]+/.test(applicationNumber)) {  // an application number must be present, for example, "690/006/15"
                 console.log(`Ignoring "${applicationNumber}" because it is not formatted as an application number.`);
                 continue;
             }
@@ -633,7 +631,7 @@ async function main() {
     if (getRandom(0, 2) === 0)
         selectedPdfUrls.reverse();
 
-    for (let pdfUrl of selectedPdfUrls) {
+    for (let pdfUrl of ["https://www.kimba.sa.gov.au/webdata/resources/files/Development%20Register%202016.pdf"]) {
         console.log(`Parsing document: ${pdfUrl}`);
         let developmentApplications = await parsePdf(pdfUrl);
         console.log(`Parsed ${developmentApplications.length} development application(s) from document: ${pdfUrl}`);
