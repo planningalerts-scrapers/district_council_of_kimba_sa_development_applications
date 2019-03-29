@@ -502,8 +502,9 @@ async function parsePdf(url: string) {
             applicationNumber = applicationNumber.replace(/^[A-Z- ]*/i, "");  // remove any month range prefix text such as "APRIL - JUNE"
             if (applicationNumber.length >= 18 && applicationNumber.length % 2 == 0 && applicationNumber.substring(0, applicationNumber.length / 2) === applicationNumber.substring(applicationNumber.length / 2))  // avoid any duplicated application numbers
                 applicationNumber = applicationNumber.substring(applicationNumber.length / 2);
-            if (!/[0-9]+\/[0-9A-Z]+\/[0-9]+/.test(applicationNumber)) {  // an application number must be present, for example, "690/006/15"
-                console.log(`Ignoring "${applicationNumber}" because it is not formatted as an application number.`);
+            if (!/[0-9]+\/[0-9A-Z]+\/[0-9]+/.test(applicationNumber)) {  // an application number must be present, for example, "690/006/2015"
+                if (applicationNumber !== "")
+                    console.log(`Ignoring "${applicationNumber}" because it is not formatted as an application number.`);
                 continue;
             }
             console.log(`    Found development application ${applicationNumber}.`);
@@ -631,7 +632,7 @@ async function main() {
     if (getRandom(0, 2) === 0)
         selectedPdfUrls.reverse();
 
-    for (let pdfUrl of ["https://www.kimba.sa.gov.au/webdata/resources/files/Development%20Register%202016.pdf"]) {
+    for (let pdfUrl of selectedPdfUrls) {
         console.log(`Parsing document: ${pdfUrl}`);
         let developmentApplications = await parsePdf(pdfUrl);
         console.log(`Parsed ${developmentApplications.length} development application(s) from document: ${pdfUrl}`);
