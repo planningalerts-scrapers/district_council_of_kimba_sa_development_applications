@@ -785,7 +785,7 @@ async function main() {
     let $ = cheerio.load(body);
 
     let pdfUrls: string[] = [];
-    for (let element of $("td.uSearchResultsDesc a.uGoToLink").get()) {
+    for (let element of $("li.result-item a.result-item__link").get()) {
         let pdfUrl = new urlparser.URL(element.attribs.href, DevelopmentApplicationsUrl).href
         if (pdfUrl.toLowerCase().includes(".pdf"))
             if (!pdfUrls.some(url => url === pdfUrl))
