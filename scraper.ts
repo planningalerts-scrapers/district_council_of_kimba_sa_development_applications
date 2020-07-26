@@ -17,7 +17,7 @@ import didYouMean, * as didyoumean from "didyoumean2";
 
 sqlite3.verbose();
 
-const DevelopmentApplicationsUrl = "https://www.kimba.sa.gov.au/search?t=siteSearch&searchMode=results&searchCurrentSiteOnly=false&resultsPerPage=100&searchString=%22development+register%22";
+const DevelopmentApplicationsUrl = "https://www.kimba.sa.gov.au/search?collection=kimba-council-meta&query=%22development%20register%22&sort=adate&num_ranks=50";
 const CommentUrl = "mailto:council@kimba.sa.gov.au";
 
 const Tolerance = 3;
